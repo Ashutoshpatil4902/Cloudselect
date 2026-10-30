@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Evaluation | CloudSelect{% endblock %}
+{% block content %}
+<h1>Scenario tests</h1>
+<p class="lede">Three evaluation cases from the discussion guide. Open any row for the full explanation and sensitivity table.</p>
+{% for item in scenarios %}
+  <article class="card">
+    <h2>{{ item.label }}</h2>
+    <p><strong>Priority:</strong> {{ item.priority }}</p>
+    <p>{{ item.form.workload_notes }}</p>
+    <p>
+      Budget ${{ item.form.max_budget }}
+      · Certification {{ item.form.required_certification or "none" }}
+      · Cost {{ item.form.weight_cost }}%
+      · Security {{ item.form.weight_security }}%
+      · Scalability {{ item.form.weight_scalability }}%
+      · Performance {{ item.form.weight_performance }}%
+      · Ease {{ item.form.weight_ease }}%
+    </p>
+    {% if item.decision.winner %}
+      <p><strong>Top eligible:</strong> {{ item.decision.winner.name }} ({{ item.decision.winner.total }})</p>
+    {% else %}
+      <p><strong>Top eligible:</strong> none</p>
+    {% endif %}
+    <ul>
+      {% for result in item.decision.results %}
+        <li>
+          {{ result.name }} —
+          {% if result.eligible %}
+            score {{ result.total }}, rank {{ result.rank }}
+          {% else %}
+            ineligible: {{ result.failures | join(" ") }}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+    <a class="button-link" href="{{ url_for('scenario', key=item.key) }}">Open full result</a>
+  </article>
+{% endfor %}
+{% endblock %}

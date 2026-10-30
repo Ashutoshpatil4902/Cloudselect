@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CloudSelect{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="{{ url_for('home') }}">CloudSelect</a>
+    <nav>
+      <a href="{{ url_for('home') }}">Requirements</a>
+      <a href="{{ url_for('compare') }}">Comparison</a>
+      <a href="{{ url_for('evaluation') }}">Evaluation</a>
+    </nav>
+  </header>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash {{ category }}">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    Model-driven DSS prototype. Rankings depend on the documented ratings, weights, and eligibility rules.
+    Dataset status: illustrative until replaced with dated sources.
+  </footer>
+</body>
+</html>

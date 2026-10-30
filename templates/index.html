@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Requirements | CloudSelect{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Decision Support System</p>
+  <h1>Compare three cloud VMs for a small web app</h1>
+  <p>Set a budget, a mandatory security condition, and criteria weights. CloudSelect checks eligibility, scores remaining options, and explains the ranking.</p>
+</section>
+
+<form class="card" method="post" action="{{ url_for('results') }}" id="requirements-form">
+  <h2>1. Workload and hard constraints</h2>
+  <label>
+    Workload notes
+    <textarea name="workload_notes" rows="3">{{ form.workload_notes }}</textarea>
+  </label>
+  <div class="grid two">
+    <label>
+      Maximum monthly budget (USD)
+      <input type="number" name="max_budget" min="1" step="0.01" value="{{ form.max_budget }}" placeholder="Leave blank for no budget cap">
+    </label>
+    <label>
+      Mandatory certification
+      <select name="required_certification">
+        {% for option in certification_options %}
+          <option value="{{ option }}" {% if form.required_certification == option %}selected{% endif %}>
+            {{ option or "None" }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <h2>2. Criteria weights (must total 100%)</h2>
+  <p class="hint">Starting weights are discussion examples, not industry standards. Change them to match your scenario.</p>
+  <div class="weights">
+    {% for key, label in criteria %}
+      <label>
+        {{ label }}
+        <input class="weight-input" type="number" name="weight_{{ key }}" min="0" max="100" step="1" value="{{ form['weight_' ~ key] }}" required>
+      </label>
+    {% endfor %}
+  </div>
+  <p class="weight-total">Weight total: <strong id="weight-sum">0</strong>%</p>
+  <input type="hidden" name="scenario" value="custom">
+  <button type="submit">Rank alternatives</button>
+</form>
+
+<section class="card">
+  <h2>Preset evaluation scenarios</h2>
+  <div class="grid three">
+    {% for key, spec in scenarios.items() %}
+      <a class="scenario" href="{{ url_for('scenario', key=key) }}">
+        <strong>{{ spec.label }}</strong>
+        <span>{{ spec.priority }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

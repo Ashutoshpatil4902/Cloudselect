@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Comparison | CloudSelect{% endblock %}
+{% block content %}
+<h1>Criterion ratings and evidence notes</h1>
+<p class="lede">Equivalent category: general-purpose 2 vCPU / 4 GiB virtual machines for a small web app in Western Europe. Ratings use a 1-5 suitability scale.</p>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Alternative</th>
+        <th>Monthly cost</th>
+        <th>Cost</th>
+        <th>Security</th>
+        <th>Scalability</th>
+        <th>Performance</th>
+        <th>Ease</th>
+        <th>Certifications</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in alternatives %}
+      <tr>
+        <td>
+          <strong>{{ item.name }}</strong><br>
+          <span class="muted">{{ item.region }} · {{ item.data_status }}</span>
+        </td>
+        <td>${{ "%.2f"|format(item.monthly_cost_usd) }}</td>
+        <td>{{ item.cost_score }}</td>
+        <td>{{ item.security_score }}</td>
+        <td>{{ item.scalability_score }}</td>
+        <td>{{ item.performance_score }}</td>
+        <td>{{ item.ease_score }}</td>
+        <td>{{ item.certifications | join(", ") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% for item in alternatives %}
+  <article class="card">
+    <h2>{{ item.name }}</h2>
+    <p>{{ item.source_notes }}</p>
+    <ul>
+      <li><strong>Cost:</strong> {{ item.cost_notes }}</li>
+      <li><strong>Security:</strong> {{ item.security_notes }}</li>
+      <li><strong>Scalability:</strong> {{ item.scalability_notes }}</li>
+      <li><strong>Performance:</strong> {{ item.performance_notes }}</li>
+      <li><strong>Ease:</strong> {{ item.ease_notes }}</li>
+    </ul>
+  </article>
+{% endfor %}
+{% endblock %}
