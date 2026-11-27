@@ -4,28 +4,33 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}CloudSelect{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232346D8'/%3E%3Cpath d='M9 21h14a4 4 0 0 0 0-8 6 6 0 0 0-11.5-1.5A4.75 4.75 0 0 0 9 21z' fill='white'/%3E%3C/svg%3E">
 </head>
 <body>
-  <header class="top">
-    <a class="brand" href="{{ url_for('home') }}">CloudSelect</a>
-    <nav>
-      <a href="{{ url_for('home') }}">Requirements</a>
-      <a href="{{ url_for('compare') }}">Comparison</a>
-      <a href="{{ url_for('evaluation') }}">Evaluation</a>
-    </nav>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="{{ url_for('home') }}">
+        <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><path d="M9 21h14a4 4 0 0 0 0-8 6 6 0 0 0-11.5-1.5A4.75 4.75 0 0 0 9 21z" fill="var(--surface)"/></svg>
+        CloudSelect
+      </a>
+      <nav aria-label="Main">
+        <a href="{{ url_for('home') }}" {% if active_page in ('home', 'results', 'scenario') %}aria-current="page"{% endif %}>Requirements</a>
+        <a href="{{ url_for('compare') }}" {% if active_page == 'compare' %}aria-current="page"{% endif %}>Providers</a>
+        <a href="{{ url_for('evaluation') }}" {% if active_page == 'evaluation' %}aria-current="page"{% endif %}>Scenarios</a>
+      </nav>
+    </div>
   </header>
-  <main>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% for category, message in messages %}
-        <p class="flash {{ category }}">{{ message }}</p>
-      {% endfor %}
-    {% endwith %}
+  <main id="main" class="wrap">
     {% block content %}{% endblock %}
   </main>
-  <footer>
-    Model-driven DSS prototype. Rankings depend on the documented ratings, weights, and eligibility rules.
-    Dataset status: illustrative until replaced with dated sources.
+  <footer class="wrap site-footer">
+    <p>CloudSelect is a decision support prototype. Rankings come from the documented 1–5 ratings, your weights, and the eligibility rules. Provider data is illustrative until replaced with dated quotes.</p>
   </footer>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

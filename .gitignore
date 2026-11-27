@@ -8,3 +8,6 @@ __pycache__/
 *.egg-info/
 .coverage
 htmlcov/
+
+# Local scratch material
+.tmp_pairwork/
