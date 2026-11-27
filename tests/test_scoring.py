@@ -47,21 +47,21 @@ def test_missing_certification_is_ineligible():
 
 def test_cost_sensitive_scenario_excludes_azure():
     decision = run_decision(SCENARIOS["A"]["form"])
-    azure = next(item for item in decision.results if item["id"] == "azure_b2s")
+    azure = next(item for item in decision["results"] if item["id"] == "azure_b2s")
     assert azure["eligible"] is False
-    assert decision.winner["id"] == "gcp_e2_medium"
+    assert decision["winner"]["id"] == "gcp_e2_medium"
 
 
 def test_security_scenario_excludes_gcp():
     decision = run_decision(SCENARIOS["B"]["form"])
-    gcp = next(item for item in decision.results if item["id"] == "gcp_e2_medium")
+    gcp = next(item for item in decision["results"] if item["id"] == "gcp_e2_medium")
     assert gcp["eligible"] is False
     assert "PCI DSS" in gcp["failures"][0]
 
 
 def test_growth_scenario_ranks_aws_first():
     decision = run_decision(SCENARIOS["C"]["form"])
-    assert decision.winner["id"] == "aws_t3_medium"
+    assert decision["winner"]["id"] == "aws_t3_medium"
 
 
 def test_all_preset_scenarios_run():

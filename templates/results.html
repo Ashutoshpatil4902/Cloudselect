@@ -1,143 +1,125 @@
 {% extends "base.html" %}
 {% block title %}Results | CloudSelect{% endblock %}
+{% macro provider_class(item) -%}
+  {%- if item.id.startswith('aws') %}p-aws{% elif item.id.startswith('azure') %}p-azure{% else %}p-gcp{% endif -%}
+{%- endmacro %}
 {% block content %}
-{% if scenario_meta %}
-  <p class="eyebrow">{{ scenario_meta.label }}</p>
-{% endif %}
-<h1>Ranking and explanations</h1>
-<p class="lede">
-  Budget:
-  {% if decision.inputs.max_budget %}
-    ${{ "%.2f"|format(decision.inputs.max_budget) }}
-  {% else %}
-    none
-  {% endif %}
-  · Mandatory certification: {{ decision.inputs.required_certification or "none" }}
-</p>
-{% if decision.inputs.workload_notes %}
-  <p>{{ decision.inputs.workload_notes }}</p>
-{% endif %}
-
-{% if decision.winner %}
-  <section class="card highlight">
-    <p class="eyebrow">Recommended under these weights</p>
-    <h2>{{ decision.winner.name }}</h2>
-    <p>Weighted score {{ decision.winner.total }} / 5. This is a better match under the selected weights and data, not an objective quality guarantee.</p>
-  </section>
-{% else %}
-  <section class="card">
-    <h2>No eligible alternative</h2>
-    <p>Every option failed a mandatory constraint. Relax the budget or certification requirement to continue.</p>
-  </section>
-{% endif %}
-
-<div class="table-wrap">
-  <table>
-    <thead>
-      <tr>
-        <th>Rank</th>
-        <th>Alternative</th>
-        <th>Eligible</th>
-        <th>Total</th>
-        {% for key, label in criteria %}
-          <th>{{ label }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in decision.results %}
-      <tr class="{% if not item.eligible %}ineligible{% endif %}">
-        <td>{{ item.rank or "—" }}</td>
-        <td>{{ item.name }}</td>
-        <td>{{ "Yes" if item.eligible else "No" }}</td>
-        <td>{{ item.total if item.total is not none else "—" }}</td>
-        {% for contribution in item.contributions %}
-          <td>{{ contribution.rating }} <span class="muted">({{ contribution.contribution }})</span></td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="page-head">
+  <a class="back" href="{{ url_for('home', **form) }}">Edit requirements</a>
+  <h1>{% if scenario_meta %}{{ scenario_meta.label.split('. ', 1)[1] }}{% else %}Your ranking{% endif %}</h1>
+  <dl class="facts">
+    <div><dt>Budget</dt><dd>{% if decision.inputs.max_budget %}${{ "%.2f"|format(decision.inputs.max_budget) }} / month{% else %}No cap{% endif %}</dd></div>
+    <div><dt>Certification</dt><dd>{{ decision.inputs.required_certification or "Not required" }}</dd></div>
+    {% if decision.inputs.workload_notes %}<div class="wide"><dt>Workload</dt><dd>{{ decision.inputs.workload_notes }}</dd></div>{% endif %}
+  </dl>
 </div>
 
-<canvas id="score-chart" height="120"></canvas>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script>
-  const eligible = {{ decision.results | selectattr("eligible") | list | tojson }};
-  if (eligible.length && window.Chart) {
-    new Chart(document.getElementById("score-chart"), {
-      type: "bar",
-      data: {
-        labels: eligible.map(item => item.name),
-        datasets: [{
-          label: "Weighted score",
-          data: eligible.map(item => item.total),
-          backgroundColor: "#1f4e79"
-        }]
-      },
-      options: {
-        scales: { y: { min: 0, max: 5 } },
-        plugins: { legend: { display: false } }
-      }
-    });
-  }
-</script>
+{% if decision.winner %}
+  <section class="verdict">
+    <div>
+      <p class="verdict-label">Best match for these weights</p>
+      <h2><span class="dot {{ provider_class(decision.winner) }}"></span>{{ decision.winner.name }}</h2>
+      <p class="hint">${{ "%.2f"|format(decision.winner.monthly_cost_usd) }} / month in {{ decision.winner.region }}. A better fit for the weights and data you chose, not an objective quality guarantee.</p>
+    </div>
+    <p class="verdict-score"><strong>{{ "%.2f"|format(decision.winner.total) }}</strong><span>out of 5</span></p>
+  </section>
+{% else %}
+  <section class="verdict empty">
+    <div>
+      <h2>No alternative meets your hard rules</h2>
+      <p>Every option breaks the budget or certification requirement. Raise the budget or choose a different certification to get a ranking.</p>
+    </div>
+    <a class="btn primary" href="{{ url_for('home', **form) }}">Adjust requirements</a>
+  </section>
+{% endif %}
 
-{% for item in decision.results %}
-  <article class="card">
-    <h2>{{ item.name }} {% if not item.eligible %}<span class="badge">Ineligible</span>{% endif %}</h2>
-    {% if item.failures %}
-      <ul class="fail">
-        {% for failure in item.failures %}
-          <li>{{ failure }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-    <ul>
-      {% for contribution in item.contributions %}
-        <li>
-          <strong>{{ contribution.label }}</strong>
-          (weight {{ contribution.weight_percent }}%, rating {{ contribution.rating }}/5, contribution {{ contribution.contribution }}):
-          {{ contribution.notes }}
-        </li>
+<section class="panel">
+  <div class="section-head">
+    <h2>How each option scores</h2>
+    <ul class="legend" aria-label="Criteria colours">
+      {% for key, label in criteria %}
+        <li><span class="swatch c-{{ key }}"></span>{{ label }} <span class="muted">{{ (decision.weight_fractions[key] * 100) | round(0) | int }}%</span></li>
       {% endfor %}
     </ul>
-  </article>
-{% endfor %}
-
-<section class="card">
-  <h2>Sensitivity: cost weight</h2>
-  <p>Other weights are rescaled so the total remains 100%. A change in the top-ranked option is reported rather than hidden.</p>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Cost weight</th>
-          <th>Top-ranked option</th>
-          <th>Score</th>
-          <th>Changed from current run?</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in sensitivity %}
-        <tr>
-          <td>{{ row.cost_weight }}%</td>
-          <td>{{ row.top_name }}</td>
-          <td>{{ row.top_score if row.top_score is not none else "—" }}</td>
-          <td>{{ "Yes" if row.changed_from_base else "No" }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </div>
+  <ol class="bars">
+    {% for item in decision.results %}
+      <li class="bar-row {% if not item.eligible %}is-out{% endif %}">
+        <div class="bar-name">
+          <span class="rank">{{ item.rank or "–" }}</span>
+          <span><span class="dot {{ provider_class(item) }}"></span>{{ item.name }}</span>
+        </div>
+        {% if item.eligible %}
+          <div class="bar-track" role="img" aria-label="{{ item.name }} scores {{ '%.2f'|format(item.total) }} out of 5">
+            {% for c in item.contributions %}
+              <span class="seg c-{{ c.key }}" style="width: {{ c.contribution / 5 * 100 }}%" title="{{ c.label }}: {{ c.rating }}/5 × {{ c.weight_percent }}% = {{ c.contribution }}"></span>
+            {% endfor %}
+          </div>
+          <span class="bar-value">{{ "%.2f"|format(item.total) }}</span>
+        {% else %}
+          <div class="bar-out">
+            {% for failure in item.failures %}<p>{{ failure }}</p>{% endfor %}
+          </div>
+          <span class="bar-value muted">Excluded</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+  <div class="scale" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
 </section>
 
-<section class="card">
-  <h2>Assumptions</h2>
-  <ul>
-    {% for item in decision.assumptions %}
-      <li>{{ item }}</li>
-    {% endfor %}
-  </ul>
+<section class="panel">
+  <h2>Why each option got its score</h2>
+  <p class="hint">Contribution = weight × rating. The contributions add up to the total.</p>
+  {% for item in decision.results %}
+    <details class="explain" {% if loop.first %}open{% endif %}>
+      <summary>
+        <span><span class="dot {{ provider_class(item) }}"></span>{{ item.name }}</span>
+        <span class="muted">{% if item.eligible %}{{ "%.2f"|format(item.total) }} / 5{% else %}Excluded{% endif %}</span>
+      </summary>
+      {% if item.failures %}
+        <ul class="failures">{% for failure in item.failures %}<li>{{ failure }}</li>{% endfor %}</ul>
+      {% endif %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Criterion</th><th>Weight</th><th>Rating</th><th>Contribution</th><th>Evidence</th></tr></thead>
+          <tbody>
+            {% for c in item.contributions %}
+              <tr>
+                <td><span class="swatch c-{{ c.key }}"></span>{{ c.label }}</td>
+                <td class="num">{{ c.weight_percent | round(0) | int }}%</td>
+                <td><span class="pips" aria-label="{{ c.rating }} out of 5">{% for i in range(5) %}<i class="{% if i < c.rating %}on{% endif %}"></i>{% endfor %}</span></td>
+                <td class="num">{{ "%.2f"|format(c.contribution) }}</td>
+                <td class="note">{{ c.notes }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  {% endfor %}
 </section>
+
+<div class="split">
+  <section class="panel">
+    <h2>What if cost mattered more or less?</h2>
+    <p class="hint">Cost weight is varied while the other weights are rescaled to keep the total at 100%.</p>
+    <ol class="sens">
+      {% for row in sensitivity %}
+        <li class="{% if row.changed_from_base %}changed{% endif %}">
+          <span class="sens-weight">Cost {{ row.cost_weight }}%</span>
+          <strong>{{ row.top_name }}</strong>
+          <span class="muted">{% if row.top_score is not none %}{{ "%.2f"|format(row.top_score) }}{% else %}–{% endif %}{% if row.changed_from_base %}, different winner{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>Assumptions</h2>
+    <ul class="plain">
+      {% for item in decision.assumptions %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
 {% endblock %}

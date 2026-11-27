@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Page not found | CloudSelect{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>This page doesn’t exist</h1>
+  <p class="lede">The link may be out of date. Start again from your requirements.</p>
+  <p><a class="btn primary" href="{{ url_for('home') }}">Go to requirements</a></p>
+</div>
+{% endblock %}

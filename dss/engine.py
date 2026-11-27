@@ -6,14 +6,24 @@ from dss.ranking import rank_results
 from dss.scoring import normalise_weights, score_alternative
 
 
+def _to_number(raw, field_label: str) -> float:
+    text = str(raw).strip()
+    if not text:
+        raise ValueError(f"{field_label} is empty. Enter a number.")
+    try:
+        return float(text)
+    except ValueError:
+        raise ValueError(f"{field_label} must be a number, not '{text}'.") from None
+
+
 def parse_inputs(form: dict) -> dict:
     weights = {}
-    for key, _ in CRITERIA:
+    for key, label in CRITERIA:
         raw = form.get(f"weight_{key}", DEFAULT_WEIGHTS[key])
-        weights[key] = float(raw)
+        weights[key] = _to_number(raw, f"{label} weight")
 
     budget_raw = str(form.get("max_budget", "")).strip()
-    max_budget = float(budget_raw) if budget_raw else None
+    max_budget = _to_number(budget_raw, "Maximum budget") if budget_raw else None
     if max_budget is not None and max_budget <= 0:
         raise ValueError("Maximum budget must be greater than 0, or left blank.")
 

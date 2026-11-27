@@ -2,59 +2,105 @@
 {% block title %}Requirements | CloudSelect{% endblock %}
 {% block content %}
 <section class="hero">
-  <p class="eyebrow">Decision Support System</p>
-  <h1>Compare three cloud VMs for a small web app</h1>
-  <p>Set a budget, a mandatory security condition, and criteria weights. CloudSelect checks eligibility, scores remaining options, and explains the ranking.</p>
+  <h1>Which cloud VM fits your web app?</h1>
+  <p class="lede">Set a budget and any certification you can’t do without, then decide how much each criterion matters. CloudSelect removes options that break a hard rule, scores the rest, and shows the reasoning behind every number.</p>
+  <ul class="contenders" aria-label="Alternatives being compared">
+    <li><span class="dot p-aws"></span>AWS EC2 t3.medium</li>
+    <li><span class="dot p-azure"></span>Azure B2s</li>
+    <li><span class="dot p-gcp"></span>GCP e2-medium</li>
+  </ul>
 </section>
 
-<form class="card" method="post" action="{{ url_for('results') }}" id="requirements-form">
-  <h2>1. Workload and hard constraints</h2>
-  <label>
-    Workload notes
-    <textarea name="workload_notes" rows="3">{{ form.workload_notes }}</textarea>
-  </label>
-  <div class="grid two">
-    <label>
-      Maximum monthly budget (USD)
-      <input type="number" name="max_budget" min="1" step="0.01" value="{{ form.max_budget }}" placeholder="Leave blank for no budget cap">
-    </label>
-    <label>
-      Mandatory certification
-      <select name="required_certification">
-        {% for option in certification_options %}
-          <option value="{{ option }}" {% if form.required_certification == option %}selected{% endif %}>
-            {{ option or "None" }}
-          </option>
-        {% endfor %}
-      </select>
-    </label>
+{% if error %}
+  <div class="alert" role="alert">
+    <strong>Couldn’t rank the alternatives.</strong> {{ error }}
   </div>
+{% endif %}
 
-  <h2>2. Criteria weights (must total 100%)</h2>
-  <p class="hint">Starting weights are discussion examples, not industry standards. Change them to match your scenario.</p>
-  <div class="weights">
-    {% for key, label in criteria %}
-      <label>
-        {{ label }}
-        <input class="weight-input" type="number" name="weight_{{ key }}" min="0" max="100" step="1" value="{{ form['weight_' ~ key] }}" required>
-      </label>
-    {% endfor %}
-  </div>
-  <p class="weight-total">Weight total: <strong id="weight-sum">0</strong>%</p>
-  <input type="hidden" name="scenario" value="custom">
-  <button type="submit">Rank alternatives</button>
+<form method="post" action="{{ url_for('results') }}" id="requirements-form" class="planner" novalidate>
+  <section class="panel constraints">
+    <h2>Workload and hard rules</h2>
+    <p class="hint">An option that breaks one of these is excluded, however well it scores.</p>
+
+    <label class="field">
+      <span>Workload</span>
+      <textarea name="workload_notes" rows="3">{{ form.workload_notes }}</textarea>
+    </label>
+
+    <label class="field">
+      <span>Maximum monthly budget</span>
+      <span class="input-affix">
+        <span aria-hidden="true">$</span>
+        <input type="number" name="max_budget" min="1" step="0.01" value="{{ form.max_budget }}" placeholder="No limit" inputmode="decimal">
+        <span aria-hidden="true">/ month</span>
+      </span>
+      <small>Leave blank for no budget cap.</small>
+    </label>
+
+    <fieldset class="field">
+      <legend>Required certification</legend>
+      <div class="chips">
+        {% for option in certification_options %}
+          <label class="chip">
+            <input type="radio" name="required_certification" value="{{ option }}" {% if (form.required_certification or '') == option %}checked{% endif %}>
+            <span>{{ option or "None" }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="presets">
+      <h3>Start from a scenario</h3>
+      <div class="preset-list">
+        {% for key, spec in scenarios.items() %}
+          <button type="button" class="preset" data-preset="{{ key }}">
+            <strong>{{ spec.label.split('. ', 1)[1] }}</strong>
+            <span>{{ spec.priority }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="panel allocator" aria-labelledby="weights-title">
+    <div class="allocator-head">
+      <h2 id="weights-title">What matters most?</h2>
+      <p class="total" aria-live="polite"><strong id="weight-sum">100</strong><span>% allocated</span></p>
+    </div>
+
+    <div class="stack" id="weight-stack" aria-hidden="true">
+      {% for key, label in criteria %}
+        <span class="seg c-{{ key }}" data-key="{{ key }}"></span>
+      {% endfor %}
+      <span class="seg seg-empty"></span>
+    </div>
+
+    <div class="weight-rows">
+      {% for key, label in criteria %}
+        <div class="weight-row">
+          <label for="w-{{ key }}" class="weight-label"><span class="swatch c-{{ key }}"></span>{{ label }}</label>
+          <input type="range" class="weight-range c-{{ key }}" min="0" max="100" step="1" value="{{ form['weight_' ~ key] }}" data-key="{{ key }}" aria-label="{{ label }} weight slider">
+          <span class="weight-num">
+            <input id="w-{{ key }}" class="weight-input" type="number" name="weight_{{ key }}" min="0" max="100" step="1" value="{{ form['weight_' ~ key] }}" data-key="{{ key }}" required>
+            <span aria-hidden="true">%</span>
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <p class="weight-status" id="weight-status" aria-live="polite"></p>
+
+    <div class="actions">
+      <button type="button" class="btn ghost" id="balance">Scale to 100%</button>
+      <button type="submit" class="btn primary" id="submit">Rank alternatives</button>
+    </div>
+  </section>
+
+  <input type="hidden" name="scenario" value="{{ form.scenario or 'custom' }}" id="scenario-field">
 </form>
 
-<section class="card">
-  <h2>Preset evaluation scenarios</h2>
-  <div class="grid three">
-    {% for key, spec in scenarios.items() %}
-      <a class="scenario" href="{{ url_for('scenario', key=key) }}">
-        <strong>{{ spec.label }}</strong>
-        <span>{{ spec.priority }}</span>
-      </a>
-    {% endfor %}
-  </div>
-</section>
+<script type="application/json" id="scenario-data">{{ scenarios | tojson }}</script>
+{% endblock %}
+{% block scripts %}
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 {% endblock %}
